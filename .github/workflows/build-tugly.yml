@@ -1,0 +1,53 @@
+
+name: Build Tugly APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Tugly-Source-Prepared.zip'
+      - '.github/workflows/build-tugly.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Extract project
+        run: |
+          mkdir source
+          unzip -q Tugly-Source-Prepared.zip -d source
+          find source -name gradlew -type f
+
+      - name: Build APK
+        run: |
+          PROJECT_DIR=$(dirname "$(find source -name gradlew -type f | head -n 1)")
+          chmod +x "$PROJECT_DIR/gradlew"
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tugly-APK
+          path: source/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          
